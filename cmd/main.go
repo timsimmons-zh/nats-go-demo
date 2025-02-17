@@ -23,7 +23,7 @@ func consumeEvents(ctx context.Context, cons jetstream.Consumer, id int) func() 
 		consCtx, err := cons.Consume(
 			func(msg jetstream.Msg) {
 				log.Printf("Received message(consumer=%d): %v\n", id, string(msg.Data()))
-				msg.Ack()
+				msg.DoubleAck(ctx) // Double-Ack to ensure the message is removed from the stream
 			},
 			jetstream.ConsumeErrHandler(func(_ jetstream.ConsumeContext, err error) {
 				log.Printf("consumer error (id=%d): %v", id, err)
