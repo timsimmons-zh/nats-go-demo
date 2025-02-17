@@ -1,0 +1,117 @@
+services:
+  n1.local.dev:
+    container_name: n1
+    image: nats:latest
+    hostname: n1.local.dev
+    entrypoint: /nats-server
+    command: >
+      --name N1 --cluster_name JSC --js --store_dir /data --cluster nats://0.0.0.0:6222 --routes nats-route://n2.local.dev:6222,n3.local.dev:6222 -p 4222 --http_port 8222
+    ports:
+      - "4222:4222"
+      - "6222:6222"
+      - "8222:8222"
+    volumes:
+      - n1_data:/data
+    networks:
+      - nats
+    profiles:
+      - nats
+
+  n2.local.dev:
+    container_name: n2
+    image: nats:latest
+    hostname: n2.local.dev
+    entrypoint: /nats-server
+    command: >
+      --name N2 --cluster_name JSC --js --store_dir /data --cluster nats://0.0.0.0:6222 --routes nats-route://n1.local.dev:6222 -p 4222 --http_port 8222
+    ports:
+      - "4223:4222"
+      - "6223:6222"
+      - "8223:8222"
+    volumes:
+      - n2_data:/data
+    networks:
+      - nats
+    depends_on:
+      - n1.local.dev
+    profiles:
+      - nats
+
+  n3.local.dev:
+    container_name: n3
+    image: nats:latest
+    hostname: n3.local.dev
+    entrypoint: /nats-server
+    command: >
+      --name N3 --cluster_name JSC --js --store_dir /data --cluster nats://0.0.0.0:6222 --routes nats-route://n1.local.dev:6222 -p 4222 --http_port 8222
+    ports:
+      - "4224:4222"
+      - "6224:6222"
+      - "8224:8222"
+    volumes:
+      - n3_data:/data
+    networks:
+      - nats
+    depends_on:
+      - n1.local.dev
+    profiles:
+      - nats
+
+  nats-client-1:
+    build: .
+    container_name: nats-client-1
+    networks:
+      - nats
+    environment:
+      - NATS_STREAM_NAME=events_stream
+      - NATS_SUBJECT=event_stream
+      - NATS_CLUSTER_URL=nats://n1.local.dev:4222
+      - NUM_CONSUMERS=2
+      - NUM_PUBLISHERS=1
+      - MAX_PUBLISHED_MSGS=0
+      - PUBLISH_DELAY=10ms
+      - NATS_DURABLE_CONSUMER=nats-consumer
+    profiles:
+      - client
+
+  nats-client-2:
+    build: .
+    container_name: nats-client-2
+    networks:
+      - nats
+    environment:
+      - NATS_STREAM_NAME=events_stream
+      - NATS_SUBJECT=event_stream
+      - NATS_CLUSTER_URL=nats://n1.local.dev:4222
+      - NUM_CONSUMERS=3
+      - NUM_PUBLISHERS=0
+      - NATS_DURABLE_CONSUMER=nats-consumer
+    profiles:
+      - client
+
+  nats-client-3:
+    build: .
+    container_name: nats-client-3
+    networks:
+      - nats
+    environment:
+      - NATS_STREAM_NAME=events_stream
+      - NATS_SUBJECT=event_stream
+      - NATS_CLUSTER_URL=nats://n1.local.dev:4222
+      - NUM_CONSUMERS=5
+      - NUM_PUBLISHERS=0
+      - NATS_DURABLE_CONSUMER=nats-consumer
+    profiles:
+      - client
+
+networks:
+  nats:
+    driver: bridge
+
+volumes:
+  n1_data:
+    driver: local
+  n2_data:
+    driver: local
+  n3_data:
+    driver: local
